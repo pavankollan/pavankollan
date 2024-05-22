@@ -1,0 +1,434 @@
+=================
+JENKINS - Pipeline
+=================
+
+-> Jenkins Pipeline is an automation solution that lets you create simple or complex pipelines.
+
+-> Jenkins Pipeline is a combination of Plugins which automates number of tasks and makes the CI/CD pipeline efficient, high in quality and reliable.
+
+-> Jenkins provides two ways of developing a pipeline
+
+1) Scripted
+2) Declarative
+
+-> Traditionally, Jenkins jobs were created using Jenkins UI called FreeStyle jobs. 
+
+-> In Jenkins 2.0, Jenkins introduced a new way to create jobs using the technique called pipeline as code. 
+
+-> In pipeline as code technique, jobs are created using a script file that contains the steps to be executed by the job. 
+
+-> In Jenkins, that scripted file is called Jenkinsfile.
+
+======================
+What is Jenkinsfile?
+======================
+
+-> Jenkinsfile is nothing but a simple text file which is used to write the Jenkins Pipeline and to automate the Continuous Integration process.
+
+-> Jenkinsfile usually checked in along with the project’s source code in Git repo. Ideally, every application will have its own Jenkinsfile.
+
+-> Jenkinsfile can be written in two ways – 
+
+1) Scripted pipeline syntax
+2) Declarative pipeline syntax
+
+=====================================
+What is Jenkins Declarative Pipeline?
+=====================================
+
+-> The Declarative Pipeline subsystem in Jenkins Pipeline is relatively new, and provides a simplified, opinionated syntax on top of the Pipeline subsystems.
+
+=====================================
+Our First Declarative Pipeline
+===================================
+
+pipeline {
+    agent any
+    stages {
+        stage('Welcome Step') {
+            steps { 
+                echo 'Welcome to Jenkins Scripting'
+            }
+        }
+    }
+}
+
+pipeline : Entire Declarative pipeline script should be written inside the pipeline block. It’s a mandatory block.
+
+agent : Specify where the Jenkins build job should run. agent can be at pipeline level or stage level. It’s mandatory to define an agent.
+
+stages : stages block constitutes different executable stage blocks. At least one stage block is mandatory inside stages block.
+
+stage : stage block contains the actual execution steps. Stage block has to be defined within stages block. It’s mandatory to have at least one stage block inside the stage block. Also its mandatory to name each stage block & this name will be shown in the Stage View after we run the job.
+
+steps : steps block contains the actual build step. It’s mandatory to have at least one step block inside a stage block.
+
+Depending on the Agent’s operating system (where Jenkins job runs), we can use shell, bat, etc., inside the steps command.
+
+
+
+######################################################
+JOB-1 : DevOps Project Setup with CI CD Pipeline
+#####################################################
+
+1) Maven
+
+2) Git Hub  (Repo URL : https://github.com/ashokitschool/maven-web-app.git)
+
+3) Tomcat  ( URL : http://15.206.27.195:8080 )
+
+4) Jenkins
+
+
+##################
+Pipeline creation
+##################
+
+=> Create CI CD Pipeline with below stages
+
+=======================
+1) Create github stage 
+=======================
+
+stage('clone repo') {
+           
+git credentialsId: 'GIT_Credentials', url: 'https://github.com/ashokitschool/maven-web-app.git'        
+
+}
+
+=======================================================
+2) Create Maven Build Stage (Add maven in global tools)
+=======================================================
+
+stage ('Maven Clean Build'){
+        def mavenHome = tool name: "Maven-3.9.1", type: "maven"
+        def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} clean package"
+}
+
+
+
+=========================
+3) Create Deploy Stage
+=======================
+-> Start Tomcat Server
+
+-> Install SSH Agent plugin using Manage Plugins
+
+-> Generate SSH Agent and configure stage
+
+stage ('Deploy'){
+       sshagent(['Tomcat-Server-Agent']) {
+		sh 'scp -o StrictHostKeyChecking=no target/01-maven-web-app.war ubuntu@172.31.47.46:/home/ubuntu/apache-tomcat-9.0.74/webapp
+	   }
+    }
+
+
+################
+Final Pipeline
+################
+
+
+node {
+    
+    stage ('Git Clone'){
+        git credentialsId: 'GIT_Credentials', url: 'https://github.com/ashokitschool/maven-web-app.git'   
+    }
+    
+    stage ('Maven Clean Build'){
+        def mavenHome = tool name: "Maven-3.8.6", type: "maven"
+        def mavenCMD = "${mavenHome}/bin/mvn"
+        sh "${mavenCMD} clean package"
+    } 
+	
+
+	stage ('Deploy'){
+       sshagent(['Tomcat-Server-Agent']) {
+		sh 'scp -o StrictHostKeyChecking=no target/01-maven-web-app.war ec2-user@13.235.75.254:/home/ec2-user/apache-tomcat-9.0.64/webapps'
+	   }
+    }
+}
+
+
+
+###########################################
+JOB-2 : Project Setup using below tools
+###########################################
+
+1) Maven
+2) Git Hub
+3) Jenkins
+4) Docker
+5) Kubernetes
+
+######## Step-1 : Jenkins Server Setup ########
+
+1) Create Ubuntu VM using AWS EC2
+
+2) Install Java & Jenkins using below commands
+
+$ sudo apt-get update
+
+$ sudo apt-get install default-jdk
+
+$ wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo apt-key add -
+
+$ sudo sh -c 'echo deb https://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+
+$ sudo apt-get update
+
+$ sudo apt-get install jenkins
+
+$ sudo systemctl status jenkins
+
+# Copy jenkins admin pwd
+$ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+# Open jenkins server in browser using VM public ip
+
+URL : http://public-ip:8080/
+
+-> Create Admin Account & Install Required Plugins in Jenkins
+
+
+
+####### Step - 2 : Install Maven & Git in Jenkins ######
+
+$ sudo apt install maven -y
+
+$ sudo apt install git -y
+
+####### Step - 3 : Setup Docker in Jenkins ######
+
+# install docker 
+$ curl -fsSL get.docker.com | /bin/bash
+
+# Add Jenkins user to docker group
+$ sudo usermod -aG docker jenkins 
+
+# Restart Jenkins 
+$ sudo systemctl restart jenkins
+
+
+###### Step-4 :: Create EKS Management Host in AWS ######
+
+1) Launch new EC2 VM ( Ubuntu )
+	  
+2) Connect to machine and install kubectl using below commands
+
+$ curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl
+
+$ chmod +x ./kubectl
+
+$ sudo mv ./kubectl /usr/local/bin 
+
+$ kubectl version --short --client
+
+3) Install AWS CLI latest version using below commands
+
+$ sudo apt install unzip
+$ cd 
+$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+$ unzip awscliv2.zip
+$ sudo ./aws/install
+$ aws --version 
+
+4) Install eksctl using below commands
+
+$ curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+
+$ sudo mv /tmp/eksctl /usr/local/bin
+
+$ eksctl version
+
+
+###### Step-5 :: Create IAM role & attach to EKS Management Host ######
+
+1) Create New Role using IAM service
+
+	usecase - ec2 
+	
+2) Add permissions 
+
+		IAM - fullaccess
+		VPC - fullaccess 
+		ec2 - fullaccess 
+		cloudfomration - fullaccess 
+		administrator - acces 
+		
+3) Enter Role Name (eksroleec2)
+
+4) Attach created role to EKS Management Host
+
+	(Select EC2 => Click on -> Security -> attach IAM role we have created)
+
+
+###### Step-6 :: Create EKS Cluster using eksctl ######
+
+
+Syntax: 
+
+eksctl create cluster --name cluster-name  \
+--region region-name \
+--node-type instance-type \
+--nodes-min 2 \
+--nodes-max 2 \ 
+--zones <AZ-1>,<AZ-2>
+
+example:
+
+$ eksctl create cluster --name ashokit-cluster1 --region us-east-1 --node-type t2.medium  --zones us-east-1a,us-east-1b
+
+
+Note: Cluster creation will take 5 to 10 mins of time (we have to wait)
+
+$ kubectl get nodes
+
+
+###### Step-7 :: Install AWS CLI in JENKINS Server ######
+
+URL : https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
+
+$ curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+$ unzip awscliv2.zip
+$ sudo ./aws/install
+$ aws --version 
+
+###### Step-8 :: Install Kubectl in JENKINS Server ######
+
+$ curl -o kubectl https://amazon-eks.s3.us-west-2.amazonaws.com/1.19.6/2021-01-05/bin/linux/amd64/kubectl
+
+$ chmod +x ./kubectl
+
+$ sudo mv ./kubectl /usr/local/bin 
+
+$ kubectl version --short --client
+
+
+###### Step-9 :: Update EKS Cluster Config File in Jenkins Server ######
+
+Note: Execute below command in Eks Management host & copy kube config file data
+
+$ cat .kube/config 
+
+=> Execute below commands in Jenkins Server and paste kube config file
+
+$ cd /var/lib/jenkins 
+$ sudo mkdir .kube 
+$ sudo vi .kube/config 
+
+# check eks nodes 
+$ kubectl get nodes 
+
+Note: We should be able to see EKS cluster nodes here.
+
+
+#####################################################
+######## Step-10 : Create Jenkins Pipeline ######
+#####################################################
+
+->  Create jenkins declarative pipeline script
+
+#########################
+stage-1 : git clone 
+#########################
+
+-> generate pipeline syntax for git clone with credentials
+
+git credentialsId: 'c87aff7e-f5f1-4756-978f-3379694978e6', url: 'https://github.com/ashokitschool/maven-web-app.git'
+
+stage('Clone Repo') {
+    steps {
+		git credentialsId: 'GIT-Credentials', url: 'https://github.com/ashokitschool/maven-web-app.git'
+    }
+}
+
+#########################
+stage-2 : mvn clean build
+#########################
+
+stage('Build'){
+    steps{
+       sh 'mvn clean package'
+    }
+}
+
+
+##################################################
+stage-3 : build  docker image 
+##################################################
+
+stage ('Build Docker Image'){
+    steps{
+      sh "docker build -t ashokit/app1 ."
+    }
+}
+
+##################################################
+Stage-4 : Push docker image into docker hub
+##################################################
+
+-> push docker image into docker hub using secret text
+
+-> Use pipeline syntax to generate secret for docker hub account
+
+
+ stage ('Docker Push'){
+            steps{
+             withCredentials([string(credentialsId: 'Docker-Acc-Pwd', variable: 'dockerpwd')]) {
+                    sh "docker login -u ashokit -p ${dockerpwd}"
+                    sh "docker push ashokit/mavenwebapp"
+                }
+            }
+  }
+
+
+##########################
+Step-5 : Deploy in k8s
+#########################
+
+stage ('Deploy'){
+    steps{
+	  sh 'kubectl delete deployment mavenwebappdeployment'
+       sh 'kubectl apply -f maven-web-app-deploy.yml'
+    }
+}
+
+
+######################### Final Script ##############################
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Clone') {
+            steps {
+                git credentialsId: 'GIT_Credentials', url: 'https://github.com/ashokitschool/maven-web-app.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                 sh 'mvn clean package'
+            }
+        }
+        stage('Create Image') {
+            steps {
+                sh "docker build -t ashokit/mavenwebapp ."
+            }
+        }
+        
+        stage ('Docker Push'){
+            steps{
+                withCredentials([string(credentialsId: 'Docker-Acc-Pwd', variable: 'dockerpwd')]) {
+                    sh "docker login -u ashokit -p ${dockerpwd}"
+                    sh "docker push ashokit/mavenwebapp"
+                }
+            }
+        }
+        stage ('Deploy'){
+            steps{
+                sh 'kubectl delete deployment mavenwebappdeployment'
+                sh 'kubectl apply -f maven-web-app-deploy.yml'
+        }
+}
+    }
+}

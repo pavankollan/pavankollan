@@ -1,0 +1,185 @@
+#########################################
+Sending Email Notifications From Jenkins
+#########################################
+
+1) Configure SMTP properties in Jenkins Software
+
+Manage Jenkins -> Configure System ->  E-mail Notification -> Configure SMTP properties
+
+SMTP Server : smtp.gmail.com
+
+Enable SMTP Authentication & Configure your gmail credentials
+
+Uname : <your-gmail-id>
+Pwd : <your-gmail-id-pwd>
+
+Enable Use TLS
+SMTP Port : 587
+
+
+=============================
+JOB-1 : Sending Email always 
+=============================
+
+
+pipeline {
+    agent any
+    stages {
+        stage('Git Clone') {
+            steps {
+                echo 'Cloning repo from git hub'
+            }
+        }
+   }
+   
+   post{
+        always{
+            mail to: "ashokitschool@gmail.com",
+            subject: "Test Email",
+            body: "Test"
+        }
+    }
+}
+
+=========================
+Multiple Reciepients
+==========================
+
+post{
+	always{
+		mail to: "ashokitschool@gmail.com, xyz@gmail.com",
+		subject: "Test Email",
+		body: "Test"
+	}
+}
+	
+	
+	
+====================
+Declaring Variable
+======================
+
+pipeline {
+    agent any
+    environment {
+        recipientEmails = "ashokitschool@gmail.com, xyz@gmail.com, abc@gmail.com"
+    }
+    stages {
+        stage('Hello') {
+            steps {
+                echo "Hello world"
+              }
+            }
+        }
+    post{
+        always{
+            mail to: "${recipientEmails}",
+            subject: "Test Email",
+            body: "Test"
+		}
+	}
+}
+
+==============================
+Email Extension with Log
+==============================
+
+=> Configure "Extended E-mail Notification" under Manage Jenkins / Configure System
+
+SMTP Server : smtp.gmail.com
+
+Enable SMTP Authentication & Configure your gmail credentials
+
+Uname : <your-gmail-id>
+Pwd : <your-gmail-id-pwd>
+
+Enable Use TLS
+SMTP Port : 587
+
+
+--------------------
+
+pipeline {
+    agent any
+    stages {
+        stage('Hello') {
+            steps {
+                echo "Hello world"
+               }
+            }
+        }
+    post{
+        always{
+          emailext to: "ashokitschool@gmail.com",
+          subject: "jenkins build:${currentBuild.currentResult}: ${env.JOB_NAME}",
+          body: "${currentBuild.currentResult}: Job ${env.JOB_NAME}\nMore Info can be found here: ${env.BUILD_URL}",
+		 attachLog: true
+        }
+    }
+}
+
+
+=============================
+Send Email on Build Failure
+==============================
+
+pipeline {
+    agent any
+    stages {
+        stage('Hello') {
+            steps {
+                echo "Hello world"
+                    }
+            }
+        }
+    post{
+        failure{
+            emailext to: "ashokitschool@gmail.com",
+            subject: "jenkins build:${currentBuild.currentResult}: ${env.JOB_NAME}",
+            body: "${currentBuild.currentResult}: Job ${env.JOB_NAME}\nMore Info can be found here: ${env.BUILD_URL}"
+        }
+    }
+}
+
+==========================================
+Send Email when build status got changed
+=========================================
+
+pipeline {
+    agent any
+    stages {
+        stage('Hello') {
+            steps {
+                echo "Hello world"
+			   }
+            }
+        }
+    post{
+        changed{
+            emailext to: "ashokitschool@gmail.com",
+            subject: "jenkins build:${currentBuild.currentResult}: ${env.JOB_NAME}",
+            body: "${currentBuild.currentResult}: Job ${env.JOB_NAME}\nMore Info can be found here: ${env.BUILD_URL}"
+        }
+    }
+}
+
+==============================================================================================================
+
+always --> Send email always when job is executed
+
+success --> Send email when job execution is success
+
+failure --> Send email when job execution is failed
+
+changed --> Send email when job status got changed ( success -> failure or failure -> success )
+
+===============================================================================================================
+
+
+
+
+
+
+
+
+
